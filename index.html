@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000">
 
 <link rel="manifest" href="manifest.json">
-<title>Main</title>
+<title>ZbookReader</title>
 
 <style>
 body {
@@ -14,60 +14,187 @@ body {
   height: 100vh;
   background: black;
   color: white;
+  font-family: Arial;
+}
+
+/* =========================
+   HOME SCREEN
+========================= */
+#homeScreen {
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: Arial;
   flex-direction: column;
+  gap: 20px;
 }
-#startBtn {
-    background: white ;
-    margin : 0 ;
-    height: 75px ;
-    width: 300px ;
-    border-radius : 20px ;
-    border : none ;
-    border : 2px solid gray ;
+
+#startBtn, #customFileBtn {
+  background: white;
+  height: 75px;
+  width: 300px;
+  border-radius: 20px;
+  border: 2px solid gray;
 }
-#customFileBtn {
-    height: 75px ;
-    width: 300px ;
-    border-radius : 20px ;
-    border : 2px solid gray ;
-}
-hr {
-    background : whitewz ;
-    width: 2000px ;
-}
+
 #fileName {
-    background: white;
-    color: black;
-    border-radius: 20px;
-    border : none ;
+  background: white;
+  color: black;
+  border-radius: 20px;
+  padding: 5px 10px;
+}
+
+hr {
+  width: 80%;
+}
+
+/* =========================
+   READER SCREEN
+========================= */
+#readerScreen {
+  display: none;
+  height: 100vh;
+}
+
+#text {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1em;
+  padding: 40px;
+  text-align: center;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+/* TAP ZONES */
+.zone {
+  position: fixed;
+  top: 0;
+  height: 100%;
+}
+
+#leftZone { left: 0; width: 25%; }
+#rightZone { right: 0; width: 25%; }
+#menuZone { left: 25%; width: 50%; }
+
+/* MENU */
+#menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.25);
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+}
+
+/* buttons */
+button {
+  -webkit-tap-highlight-color: transparent;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* input */
+input {
+  -webkit-tap-highlight-color: transparent;
+  padding: 10px;
+  width: 120px;
+  text-align: center;
+}
+
+/* STATUS BAR */
+#statusBar {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  font-size: 12px;
+  opacity: 0.5;
+  display: flex;
+  gap: 10px;
+}
+
+.zone:active {
+  background: transparent;
 }
 </style>
 </head>
 
 <body>
 
+<!-- =========================
+     HOME SCREEN
+========================= -->
+<div id="homeScreen">
 
 <h2><span id="fileName">ZbookReader</span></h2>
 <hr>
+
 <input type="file" id="fileInput" accept=".txt" hidden>
 
 <button id="customFileBtn">Choose File</button>
-<br>
+<button id="startBtn">START READING</button>
 
-<button id="startBtn">START</button>
-<br>
+</div>
+
+<!-- =========================
+     READER SCREEN
+========================= -->
+<div id="readerScreen">
+
+<div id="text"></div>
+
+<div id="leftZone" class="zone"></div>
+<div id="menuZone" class="zone"></div>
+<div id="rightZone" class="zone"></div>
+
+<div id="menu">
+  <button onclick="exitReader()">Exit</button>
+
+  <div>
+    <input type="number" id="pageInput" placeholder="Page">
+    <button onclick="jumpPage()">Jump</button>
+  </div>
+
+  <button onclick="toggleMenu()">Close</button>
+</div>
+
+<div id="statusBar">
+  <span id="pageMark"></span>
+  <span id="time"></span>
+  <span id="battery"></span>
+</div>
+
+</div>
 
 <script>
-  
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('service-worker.js');
 }
+
+/* =========================
+   HOME LOGIC
+========================= */
+const fileInput = document.getElementById("fileInput");
+const customBtn = document.getElementById("customFileBtn");
+const fileName = document.getElementById("fileName");
+
+customBtn.onclick = () => fileInput.click();
+
+fileInput.onchange = () => {
+  fileName.textContent = fileInput.files[0]?.name || "No file selected";
+};
+
 document.getElementById("startBtn").addEventListener("click", () => {
-  const file = document.getElementById("fileInput").files[0];
+  const file = fileInput.files[0];
 
   if (!file) {
     alert("Please select a file.");
@@ -79,24 +206,115 @@ document.getElementById("startBtn").addEventListener("click", () => {
   reader.onload = function(e) {
     const text = e.target.result;
 
-    // store text in browser memory
     localStorage.setItem("bookText", text);
 
-    // go to reader page
-    window.location.href = "reader.html";
+    openReader();
   };
 
   reader.readAsText(file);
 });
-const fileInput = document.getElementById("fileInput");
-const customBtn = document.getElementById("customFileBtn");
-const fileName = document.getElementById("fileName");
 
-customBtn.onclick = () => fileInput.click();
+/* =========================
+   SCREEN SWITCH
+========================= */
+function openReader() {
+  document.getElementById("homeScreen").style.display = "none";
+  document.getElementById("readerScreen").style.display = "block";
+}
 
-fileInput.onchange = () => {
-  fileName.textContent = fileInput.files[0]?.name || "No file selected";
-};
+/* =========================
+   READER LOGIC (UNCHANGED)
+========================= */
+let sentences = [];
+let index = 0;
+
+const raw = localStorage.getItem("bookText") || "";
+sentences = raw.match(/[^.!?]+[.!?]+/g) || [];
+
+function render() {
+  document.getElementById("text").innerText =
+    (sentences[index] || "").trim();
+
+  document.getElementById("pageMark").innerText =
+    `${index + 1} / ${sentences.length}`;
+}
+
+function next() {
+  if (index < sentences.length - 1) {
+    index++;
+    render();
+  }
+}
+
+function prev() {
+  if (index > 0) {
+    index--;
+    render();
+  }
+}
+
+function toggleMenu() {
+  const menu = document.getElementById("menu");
+  menu.style.display =
+    menu.style.display === "flex" ? "none" : "flex";
+}
+
+/* FIXED EXIT (NO MORE PAGES) */
+function exitReader() {
+  document.getElementById("readerScreen").style.display = "none";
+  document.getElementById("homeScreen").style.display = "flex";
+}
+
+function jumpPage() {
+  const val = parseInt(document.getElementById("pageInput").value);
+
+  if (!isNaN(val) && val >= 1 && val <= sentences.length) {
+    index = val - 1;
+    render();
+    toggleMenu();
+  }
+}
+
+document.getElementById("rightZone").onclick = next;
+document.getElementById("leftZone").onclick = prev;
+document.getElementById("menuZone").onclick = toggleMenu;
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") next();
+  if (e.key === "ArrowLeft") prev();
+});
+
+function updateTime() {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const date = now.toLocaleDateString();
+
+  document.getElementById("time").innerText =
+    `${time} • ${date}`;
+}
+
+setInterval(updateTime, 1000);
+updateTime();
+
+function updateBattery() {
+  if (!navigator.getBattery) return;
+
+  navigator.getBattery().then(battery => {
+
+    function update() {
+      const level = Math.round(battery.level * 100);
+      document.getElementById("battery").innerText =
+        ` ${level}%`;
+    }
+
+    update();
+    battery.addEventListener("levelchange", update);
+  });
+}
+
+updateBattery();
+
+render();
 </script>
 
 </body>
