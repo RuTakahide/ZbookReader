@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+
+<link rel="manifest" href="manifest.json">
+<title>Main</title>
+
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  background: black;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial;
+  flex-direction: column;
+}
+#startBtn {
+    background: white ;
+    margin : 0 ;
+    height: 75px ;
+    width: 300px ;
+    border-radius : 20px ;
+    border : none ;
+    border : 2px solid gray ;
+}
+#customFileBtn {
+    height: 75px ;
+    width: 300px ;
+    border-radius : 20px ;
+    border : 2px solid gray ;
+}
+hr {
+    background : whitewz ;
+    width: 2000px ;
+}
+#fileName {
+    background: white;
+    color: black;
+    border-radius: 20px;
+    border : none ;
+}
+</style>
+</head>
+
+<body>
+
+
+<h2><span id="fileName">ZbookReader</span></h2>
+<hr>
+<input type="file" id="fileInput" accept=".txt" hidden>
+
+<button id="customFileBtn">Choose File</button>
+<br>
+
+<button id="startBtn">START</button>
+<br>
+
+<script>
+  
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+document.getElementById("startBtn").addEventListener("click", () => {
+  const file = document.getElementById("fileInput").files[0];
+
+  if (!file) {
+    alert("Please select a file.");
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const text = e.target.result;
+
+    // store text in browser memory
+    localStorage.setItem("bookText", text);
+
+    // go to reader page
+    window.location.href = "reader.html";
+  };
+
+  reader.readAsText(file);
+});
+const fileInput = document.getElementById("fileInput");
+const customBtn = document.getElementById("customFileBtn");
+const fileName = document.getElementById("fileName");
+
+customBtn.onclick = () => fileInput.click();
+
+fileInput.onchange = () => {
+  fileName.textContent = fileInput.files[0]?.name || "No file selected";
+};
+</script>
+
+</body>
+</html>
