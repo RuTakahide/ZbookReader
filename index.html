@@ -17,9 +17,6 @@ body {
   font-family: Arial;
 }
 
-/* =========================
-   HOME SCREEN
-========================= */
 #homeScreen {
   height: 100vh;
   display: flex;
@@ -27,33 +24,51 @@ body {
   align-items: center;
   flex-direction: column;
   gap: 20px;
+  transition: opacity 0.4s ease;
 }
 
 #startBtn, #customFileBtn {
   background: white;
   height: 75px;
   width: 300px;
-  border-radius: 20px;
-  border: 2px solid gray;
+  border-radius: 10px;
+  border: none;
+  overflow: hidden;
 }
 
 #fileName {
-  background: white;
-  color: black;
-  border-radius: 20px;
-  padding: 5px 10px;
+  background: transparent;
+  color: gray;
+  font-size: 6px;
+  position: fixed;
+  bottom:1px;
+  justify-content: center;
+  display:flex;
+  transition: transform 0.2s ease;
+}
+
+.animate {
+  animation: tap 0.35s ease;
+}
+
+@keyframes tap {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+  100% { transform: scale(1); }
 }
 
 hr {
-  width: 80%;
+  width: 100%;
+  border:none;
+  height:1px;
+  background:white;
 }
 
-/* =========================
-   READER SCREEN
-========================= */
 #readerScreen {
   display: none;
   height: 100vh;
+  opacity: 0;
+  transition: opacity 0.4s ease;
 }
 
 #text {
@@ -66,9 +81,24 @@ hr {
   text-align: center;
   box-sizing: border-box;
   user-select: none;
+  white-space: pre-wrap;
 }
 
-/* TAP ZONES */
+.box {
+  width: 0px;
+  height: 0px;
+  background: white;
+  color: black;
+  font-family: "Comic Sans MS", cursive;
+  display: flex;
+  font-size:60px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  animation:logo 4s ease 1s forwards;
+  animation-play-state:running;
+}
+
 .zone {
   position: fixed;
   top: 0;
@@ -79,7 +109,6 @@ hr {
 #rightZone { right: 0; width: 25%; }
 #menuZone { left: 25%; width: 50%; }
 
-/* MENU */
 #menu {
   position: fixed;
   top: 0;
@@ -94,7 +123,6 @@ hr {
   gap: 15px;
 }
 
-/* buttons */
 button {
   -webkit-tap-highlight-color: transparent;
   padding: 10px 20px;
@@ -103,7 +131,275 @@ button {
   cursor: pointer;
 }
 
-/* input */
+input {
+  -webkit-tap-highlight-color: transparent;
+  padding: 10px;
+  width: 120px;
+  text-align: center;
+}
+
+#statusBar {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  font-size: 12px;
+  opacity: 0.5;
+  display: flex;
+  gap: 10px;
+}
+#exit,#close {
+    background: white;
+    width:200px;
+    height:50px;
+    border:none;
+}
+
+.zone:active {
+  background: transparent;
+}
+
+.icn {
+  all: unset;
+  max-width:50px;
+  max-height:50px;
+  object-fit: contain;
+  display:inline-flex;
+  flex:0 0 20px;
+}
+
+@keyframes logo {
+    0%{}
+    50%{
+        width:300px;
+        height:1px;
+    }
+    100%{
+        width:300px;
+        height:100px;
+    }
+}
+#pageInput {
+    width:75px;
+    height:30px;
+    border:none;
+    border-radius:10px;
+}
+#pgjump {
+    width:100px;
+    height:50px;
+    border:none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="homeScreen">
+    <div class="box">ZbookR</div>
+    <hr>
+    <span id="fileName"></span>
+    <input type="file" id="fileInput" accept=".txt" hidden>
+    <button id="customFileBtn"><img src="Choose.png" class="icn"></button>
+    <button id="startBtn"><img src="Read.png" class="icn"></button>
+</div>
+
+<div id="readerScreen">
+
+<div id="text"></div>
+
+<div id="leftZone" class="zone"></div>
+<div id="menuZone" class="zone"></div>
+<div id="rightZone" class="zone"></div>
+
+<div id="menu">
+  <button id="exit" onclick="exitReader()">Exit</button>
+  <button id="close" onclick="toggleMenu()">Close</button>
+  <div>
+    <input type="number" id="pageInput" placeholder="Page">
+    <button id="pgjump" onclick="jumpPage()">Jump</button>
+  </div>
+  
+</div>
+
+<div id="statusBar">
+  <span id="pageMark"></span>
+  <span id="time"></span>
+  <span id="battery"></span>
+</div>
+
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+
+const fileInput = document.getElementById("fileInput");
+const customBtn = document.getElementById("customFileBtn");
+const fileName = document.getElementById("fileName");
+const startBtn = document.getElementById("startBtn");
+
+customBtn.addEventListener("click", () => {
+  customBtn.classList.remove("animate");
+  void customBtn.offsetWidth;
+  customBtn.classList.add("animate");
+  fileInput.click();
+});
+
+fileInput.onchange = () => {
+  fileName.textContent = fileInput.files[0]?.name || "No file selected";
+};
+
+startBtn.addEventListener("click", () => {
+  startBtn.classList.remove("animate");
+  void startBtn.offsetWidth;
+  startBtn.classList.add("animate");
+
+  const handler = () => {
+    startBtn.removeEventListener("animationend", handler);
+
+    const file = fileInput.files[0];
+
+    if (!file) {
+     
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      const text = e.target.result;
+      localStorage.setItem("bookText", text);
+      openReader();
+      loadBook();
+    };
+
+    reader.readAsText(file);
+  };
+
+  startBtn.addEventListener("animationend", handler);
+});
+
+function openReader() {
+  document.getElementById("homeScreen").style.opacity = "0";
+  document.getElementById("readerScreen").style.display = "block";
+
+  setTimeout(() => {
+    document.getElementById("homeScreen").style.display = "none";
+    document.getElementById("readerScreen").style.opacity = "1";
+  }, 200);
+}
+
+/* FIX: moved book parsing into reloadable function */
+let sentences = [];
+let index = 0;
+
+function loadBook() {
+  const raw = localStorage.getItem("bookText") || "";
+
+  let paragraphs = raw.split(/\n\s*\n/);
+
+  sentences = [];
+
+  for (let p of paragraphs) {
+    let parts = p.match(/[^.!?]+[.!?]+["”']?|[^.!?]+$/g) || [];
+    let buffer = "";
+
+    for (let part of parts) {
+      buffer += part.trim() + " ";
+    }
+
+    sentences.push(buffer.trim());
+  }
+
+  index = 0;
+  render();
+}
+
+function exitReader() {
+  document.getElementById("readerScreen").style.opacity = "0";
+  document.getElementById("homeScreen").style.display = "flex";
+
+  setTimeout(() => {
+    document.getElementById("readerScreen").style.display = "none";
+    document.getElementById("homeScreen").style.opacity = "1";
+  }, 200);
+}
+
+function render() {
+  document.getElementById("text").innerText = (sentences[index] || "").trim();
+  document.getElementById("pageMark").innerText = `${index + 1} / ${sentences.length}`;
+}
+
+function next() {
+  if (index < sentences.length - 1) {
+    index++;
+    render();
+  }
+}
+
+function prev() {
+  if (index > 0) {
+    index--;
+    render();
+  }
+}
+
+function toggleMenu() {
+  const menu = document.getElementById("menu");
+  menu.style.display = menu.style.display === "flex" ? "none" : "flex";
+}
+
+function jumpPage() {
+  const val = parseInt(document.getElementById("pageInput").value);
+
+  if (!isNaN(val) && val >= 1 && val <= sentences.length) {
+    index = val - 1;
+    render();
+    toggleMenu();
+  }
+}
+
+document.getElementById("rightZone").onclick = next;
+document.getElementById("leftZone").onclick = prev;
+document.getElementById("menuZone").onclick = toggleMenu;
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") next();
+  if (e.key === "ArrowLeft") prev();
+});
+
+function updateTime() {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const date = now.toLocaleDateString();
+
+  document.getElementById("time").innerText = `${time} • ${date}`;
+}
+
+setInterval(updateTime, 1000);
+updateTime();
+
+function updateBattery() {
+  if (!navigator.getBattery) return;
+
+  navigator.getBattery().then(battery => {
+    function update() {
+      document.getElementById("battery").innerText = Math.round(battery.level * 100) + "%";
+    }
+
+    update();
+    battery.addEventListener("levelchange", update);
+  });
+}
+
+updateBattery();
+
+render();
+</script>
+
+</body>
+</html>/* input */
 input {
   -webkit-tap-highlight-color: transparent;
   padding: 10px;
