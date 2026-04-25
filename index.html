@@ -17,6 +17,62 @@ body {
   font-family: Arial;
 }
 
+.light-mode {
+  background: white !important;
+  color: black !important;
+}
+
+.light-mode #text {
+  color: black !important;
+}
+
+.light-mode #menu {
+  background: rgba(255,255,255,0.85) !important;
+}
+
+.light-mode hr {
+  background: black !important;
+}
+
+.light-mode button,
+.light-mode #startBtn,
+.light-mode #customFileBtn,
+.light-mode #exit,
+.light-mode #close,
+.light-mode #themeBtn,
+.light-mode #pgjump {
+  background: black !important;
+  color: white !important;
+}
+
+.light-mode input {
+  background: #eee !important;
+  color: black !important;
+}
+
+/* PAGE INPUT FIX (FLIPPED CORRECTLY) */
+#pageInput {
+  width:75px;
+  height:30px;
+  border:none;
+  border-radius:10px;
+  background:white;
+  color:black;
+}
+
+.light-mode #pageInput {
+  background:black !important;
+  color:white !important;
+}
+
+.light-mode img {
+  filter: invert(1);
+}
+
+.light-mode .box {
+  filter: invert(1);
+}
+
 #homeScreen {
   height: 100vh;
   display: flex;
@@ -40,11 +96,10 @@ body {
   background: transparent;
   color: gray;
   font-size: 12px;
-  position: fixed;
-  bottom:4px;
   justify-content: center;
   display:flex;
-  transition: transform 0.2s ease;
+  position: fixed;
+  bottom:4px;
 }
 
 .animate {
@@ -96,7 +151,6 @@ hr {
   align-items: center;
   border-radius: 10px;
   animation:logo 4s ease 1s forwards;
-  animation-play-state:running;
 }
 
 .zone {
@@ -131,6 +185,20 @@ button {
   cursor: pointer;
 }
 
+#exit,#close,#themeBtn {
+  background: white;
+  width:200px;
+  height:50px;
+  border:none;
+}
+
+#pgjump {
+  width:100px;
+  height:50px;
+  border:none;
+  background:white;
+}
+
 input {
   -webkit-tap-highlight-color: transparent;
   padding: 10px;
@@ -147,12 +215,6 @@ input {
   display: flex;
   gap: 10px;
 }
-#exit,#close {
-    background: white;
-    width:200px;
-    height:50px;
-    border:none;
-}
 
 .zone:active {
   background: transparent;
@@ -168,26 +230,15 @@ input {
 }
 
 @keyframes logo {
-    0%{}
-    50%{
-        width:300px;
-        height:1px;
-    }
-    100%{
-        width:300px;
-        height:100px;
-    }
-}
-#pageInput {
-    width:75px;
-    height:30px;
-    border:none;
-    border-radius:10px;
-}
-#pgjump {
-    width:100px;
-    height:50px;
-    border:none;
+  0%{}
+  50%{
+    width:300px;
+    height:1px;
+  }
+  100%{
+    width:300px;
+    height:100px;
+  }
 }
 </style>
 </head>
@@ -195,12 +246,13 @@ input {
 <body>
 
 <div id="homeScreen">
-    <div class="box">ZbookR</div>
-    <hr>
-    <span id="fileName"></span>
-    <input type="file" id="fileInput" accept=".txt" hidden>
-    <button id="customFileBtn"><img src="Choose.png" class="icn"></button>
-    <button id="startBtn"><img src="Read.png" class="icn"></button>
+  <div class="box">ZbookR</div>
+  <hr>
+
+  <input type="file" id="fileInput" accept=".txt" hidden>
+  <button id="customFileBtn"><img src="Choose.png" class="icn"></button>
+  <button id="startBtn"><img src="Read.png" class="icn"></button>
+  <span id="fileName"></span>
 </div>
 
 <div id="readerScreen">
@@ -214,11 +266,12 @@ input {
 <div id="menu">
   <button id="exit" onclick="exitReader()">Exit</button>
   <button id="close" onclick="toggleMenu()">Close</button>
+  <button id="themeBtn">Theme</button>
+
   <div>
     <input type="number" id="pageInput" placeholder="Page">
     <button id="pgjump" onclick="jumpPage()">Jump</button>
   </div>
-  
 </div>
 
 <div id="statusBar">
@@ -259,11 +312,7 @@ startBtn.addEventListener("click", () => {
     startBtn.removeEventListener("animationend", handler);
 
     const file = fileInput.files[0];
-
-    if (!file) {
-     
-      return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
 
@@ -290,13 +339,11 @@ function openReader() {
   }, 200);
 }
 
-/* FIX: moved book parsing into reloadable function */
 let sentences = [];
 let index = 0;
 
 function loadBook() {
   const raw = localStorage.getItem("bookText") || "";
-
   let paragraphs = raw.split(/\n\s*\n/);
 
   sentences = [];
@@ -352,13 +399,26 @@ function toggleMenu() {
 
 function jumpPage() {
   const val = parseInt(document.getElementById("pageInput").value);
-
   if (!isNaN(val) && val >= 1 && val <= sentences.length) {
     index = val - 1;
     render();
     toggleMenu();
   }
 }
+
+const themeBtn = document.getElementById("themeBtn");
+
+if (localStorage.getItem("theme") === "light") {
+  document.body.classList.add("light-mode");
+}
+
+themeBtn.addEventListener("click", () => {
+  document.body.classList.toggle("light-mode");
+  localStorage.setItem(
+    "theme",
+    document.body.classList.contains("light-mode") ? "light" : "dark"
+  );
+});
 
 document.getElementById("rightZone").onclick = next;
 document.getElementById("leftZone").onclick = prev;
@@ -373,7 +433,6 @@ function updateTime() {
   const now = new Date();
   const time = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   const date = now.toLocaleDateString();
-
   document.getElementById("time").innerText = `${time} • ${date}`;
 }
 
@@ -387,7 +446,6 @@ function updateBattery() {
     function update() {
       document.getElementById("battery").innerText = Math.round(battery.level * 100) + "%";
     }
-
     update();
     battery.addEventListener("levelchange", update);
   });
