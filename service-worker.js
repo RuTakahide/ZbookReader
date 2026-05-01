@@ -1,7 +1,11 @@
 const CACHE_NAME = "ZbookReader";
+const OFFLINE_URL = "./index.html";
+
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
+  "./styles.css",
+  "./script.js",
   "./manifest.json",
   "./icon.png",
   "./Choose.png",
@@ -10,7 +14,9 @@ const FILES_TO_CACHE = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(FILES_TO_CACHE))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(FILES_TO_CACHE);
+    })
   );
   self.skipWaiting();
 });
@@ -18,7 +24,13 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => key !== CACHE_NAME && caches.delete(key)))
+      Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
+      )
     )
   );
   self.clients.claim();
@@ -27,32 +39,40 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
 
-  if (request.mode === "navigate" || request.url.includes("index.html")) {
+  if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, response.clone());
-            return response;
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, copy);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match(request).then((res) => {
+            return res || caches.match(OFFLINE_URL);
           });
         })
-        .catch(() => caches.match(request))
     );
     return;
   }
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      const networkFetch = fetch(request)
-        .then((response) => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, response.clone());
-            return response;
-          });
-        })
-        .catch(() => cached);
+      if (cached) return cached;
 
-      return cached || networkFetch;
+      return fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, copy);
+          });
+          return response;
+        })
+        .catch(() => {
+          return cached;
+        });
     })
   );
 });
