@@ -1,4 +1,4 @@
-const CACHE_NAME = "ZbookReader";
+const CACHE_NAME = "ZbookReader-v2"; // change version when updating 
 const OFFLINE_URL = "./index.html";
 
 const FILES_TO_CACHE = [
@@ -11,12 +11,10 @@ const FILES_TO_CACHE = [
   "./Choose.png",
   "./Reader.png"
 ];
-
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(FILES_TO_CACHE))
   );
   self.skipWaiting();
 });
@@ -37,42 +35,20 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  const request = event.request;
-
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, copy);
-          });
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then((res) => {
-            return res || caches.match(OFFLINE_URL);
-          });
-        })
-    );
-    return;
-  }
-
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-
-      return fetch(request)
+    caches.match(event.request).then((cached) => {
+      
+      const networkFetch = fetch(event.request)
         .then((response) => {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, copy);
+            cache.put(event.request, copy);
           });
           return response;
         })
-        .catch(() => {
-          return cached;
-        });
+        .catch(() => cached); 
+
+      return cached || networkFetch;
     })
   );
 });
